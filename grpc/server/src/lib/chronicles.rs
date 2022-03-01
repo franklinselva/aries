@@ -1,3 +1,5 @@
+#![allow(dead_code)] // TODO: remove once we exploit the code
+
 use anyhow::{anyhow, bail, ensure, Context, Error};
 use aries_grpc_api::{Action, Assignment, Expression, Problem};
 use aries_model::bounds::Lit;

@@ -1,8 +1,24 @@
 [package]
 authors = ["Selvakumar <selvakumar.h-s@laas.fr>"]
 edition = "2018"
-name = "aries_grpc_server"
+name = "aries_grpc"
 version = "0.1.0"
+
+[target.x86_64-apple-darwin]
+rustflags = [
+  "-C",
+  "link-arg=-undefined",
+  "-C",
+  "link-arg=dynamic_lookup",
+]
+
+[target.aarch64-apple-darwin]
+rustflags = [
+  "-C",
+  "link-arg=-undefined",
+  "-C",
+  "link-arg=dynamic_lookup",
+]
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 [dependencies]
@@ -21,6 +37,7 @@ async-trait = "0.1"
 fixedbitset = "0.4"
 itertools = "0.10"
 prost = "0.9"
+pyo3 = {version = "0.16.0", features = ["extension-module"]}
 regex = "1"
 streaming-iterator = "0.1.5"
 structopt = "0.3"
@@ -34,8 +51,8 @@ tonic-build = "0.6"
 codegen-units = 8 
 debug = true # Debug symbols for benchmarking
 lto = "thin" 
-opt-level = 3
-panic = "abort"
+opt-level = 3 
+panic = "abort" 
 
 # server binary
 [[bin]]
@@ -46,3 +63,8 @@ path = "src/server.rs"
 [[bin]]
 name = "upf-client"
 path = "src/client.rs"
+
+[lib]
+crate-type = ["cdylib"]
+name = "aries"
+path = "src/pybind.rs"

@@ -1,31 +1,13 @@
-use anyhow::{Error, Result};
+use anyhow::Result;
 use async_trait::async_trait;
 use prost::Message;
 use tonic::{transport::Server, Request, Response, Status};
 
-mod chronicles;
-use chronicles::problem_to_chronicles;
+mod lib;
+use lib::solver::solve;
 
 use aries_grpc_api::upf_server::{Upf, UpfServer};
 use aries_grpc_api::{Answer, Problem};
-use aries_planners::{Option, Planner};
-
-pub fn solve(problem: aries_grpc_api::Problem) -> Result<aries_grpc_api::Answer, Error> {
-    //TODO: Get the options from the problem
-    let opt = Option::default();
-    //TODO: Check if the options are valid for the planner
-    let mut planner = Planner::new(opt.clone());
-
-    // println!("{:?}", problem);
-    let _spec = problem_to_chronicles(problem)?;
-    planner.solve(_spec, &opt)?;
-    let answer = planner.get_answer();
-    planner.format_plan(&answer)?;
-
-    let answer = Answer::default();
-
-    Ok(answer)
-}
 
 #[derive(Default)]
 pub struct UpfService {}

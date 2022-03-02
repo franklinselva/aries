@@ -1,7 +1,7 @@
 use pyo3::exceptions::PyException;
 use pyo3::prelude::*;
 
-use aries_grpc_api::Answer;
+use aries_grpc_api::{Answer, Problem};
 
 mod lib;
 use lib::solver::solve;
@@ -19,11 +19,22 @@ fn aries(_py: Python, m: &PyModule) -> PyResult<()> {
     Ok(())
 }
 
-// #[pyfunction]
-fn solver(problem: aries_grpc_api::Problem) -> PyResult<Answer> {
-    let answer = solve(problem);
+#[pyclass]
+struct PyAnswer {
+    answer: Answer,
+}
+
+#[pyclass]
+#[derive(Debug, Clone)]
+struct PyProblem {
+    problem: Problem,
+}
+
+#[pyfunction]
+fn solver(problem: PyProblem) -> PyResult<PyAnswer> {
+    let answer = solve(problem.problem);
     if let Ok(answer) = answer {
-        Ok(answer)
+        Ok(PyAnswer { answer })
     } else {
         Err(PyErr::new::<PyException, _>(answer.unwrap_err().to_string()))
     }

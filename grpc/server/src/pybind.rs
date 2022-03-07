@@ -1,3 +1,4 @@
+#[allow(dead_code)]
 use pyo3::exceptions::PyException;
 use pyo3::prelude::*;
 

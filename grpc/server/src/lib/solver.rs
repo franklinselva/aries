@@ -1,10 +1,10 @@
 #![allow(dead_code)] // TODO: remove once we exploit the code
 
-use crate::lib::chronicles::problem_to_chronicles;
 use anyhow::{Error, Result};
 
-use aries_grpc_api::Answer;
 use aries_planners::{Option, Planner};
+
+use super::chronicles::{problem_to_chronicles, translate_answer};
 
 // Aries solver based on the problem defined by Unified Planning Framework
 pub fn solve(problem: aries_grpc_api::Problem) -> Result<aries_grpc_api::Answer, Error> {
@@ -18,8 +18,7 @@ pub fn solve(problem: aries_grpc_api::Problem) -> Result<aries_grpc_api::Answer,
     planner.solve(_spec, &opt)?;
     let answer = planner.get_answer();
     planner.format_plan(&answer)?;
-
-    let answer = Answer::default();
+    let answer = translate_answer(&planner.problem.unwrap(), &answer).unwrap();
 
     Ok(answer)
 }

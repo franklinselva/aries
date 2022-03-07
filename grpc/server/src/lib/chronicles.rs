@@ -1,10 +1,13 @@
 #![allow(dead_code)] // TODO: remove once we exploit the code
 
 use anyhow::{anyhow, bail, ensure, Context, Error};
-use aries_grpc_api::{Action, Assignment, Expression, Problem};
+use aries_grpc_api::SequentialPlan;
+use aries_grpc_api::{Action, Answer, Assignment, Expression, Problem};
 use aries_model::bounds::Lit;
+use aries_model::extensions::AssignmentExt;
 use aries_model::extensions::Shaped;
 use aries_model::lang::*;
+use aries_model::state::Domains;
 use aries_model::symbols::SymbolTable;
 use aries_model::types::TypeHierarchy;
 use aries_planning::chronicles::*;
@@ -202,6 +205,45 @@ pub fn problem_to_chronicles(problem: Problem) -> Result<aries_planning::chronic
     };
 
     Ok(problem)
+}
+
+// Convert Option<Arc<Domains>>> to Answer Object
+pub fn translate_answer(problem: &FiniteProblem, x: &Option<Arc<Domains>>) -> Result<Answer, Error> {
+    let mut answer = Answer::default();
+    let mut plan = Vec::new();
+
+    if let Some(ass) = x {
+        answer.status = 1;
+        let fmt = |name: &[SAtom]| -> String {
+            let syms: Vec<_> = name
+                .iter()
+                .map(|x| ass.sym_domain_of(*x).into_singleton().unwrap())
+                .collect();
+            problem.model.shape.symbols.format(&syms)
+        };
+        for ch in &problem.chronicles {
+            if ass.value(ch.chronicle.presence) != Some(true) {
+                continue;
+            }
+            match ch.chronicle.kind {
+                ChronicleKind::Problem | ChronicleKind::Method => continue,
+                _ => {}
+            }
+            let start = ass.f_domain(ch.chronicle.start).lb();
+            let name = fmt(&ch.chronicle.name);
+            plan.push((start, name.clone()));
+        }
+
+        plan.sort_by(|a, b| a.partial_cmp(b).unwrap());
+        let mut _seq_plan = SequentialPlan::default();
+        for (start, name) in plan {
+            // TODO: Implement the plan in the answer
+            unimplemented!()
+        }
+    } else {
+        answer.status = 0;
+    }
+    Ok(answer)
 }
 
 fn str_to_symbol(name: &str, symbol_table: &SymbolTable) -> anyhow::Result<SAtom> {

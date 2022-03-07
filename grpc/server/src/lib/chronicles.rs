@@ -1,8 +1,8 @@
 #![allow(dead_code)] // TODO: remove once we exploit the code
 
 use anyhow::{anyhow, bail, ensure, Context, Error};
-use aries_grpc_api::SequentialPlan;
 use aries_grpc_api::{Action, Answer, Assignment, Expression, Problem};
+use aries_grpc_api::{ActionInstance, SequentialPlan};
 use aries_model::bounds::Lit;
 use aries_model::extensions::AssignmentExt;
 use aries_model::extensions::Shaped;
@@ -27,7 +27,7 @@ static METHOD_TYPE: &str = "★method★";
 static FLUENT_TYPE: &str = "★fluent★";
 static OBJECT_TYPE: &str = "★object★";
 
-pub fn problem_to_chronicles(problem: Problem) -> Result<aries_planning::chronicles::Problem, Error> {
+pub fn problem_to_chronicles(problem: &Problem) -> Result<aries_planning::chronicles::Problem, Error> {
     // Construct the type hierarchy
     let types = {
         // Static types present in any problem
@@ -154,7 +154,7 @@ pub fn problem_to_chronicles(problem: Problem) -> Result<aries_planning::chronic
             .as_ref()
             .context("Initial state assignment has no valid value")?;
 
-        let expr = read_sv(expr, &problem, &symbol_table, &read_constant_atom)?;
+        let expr = read_sv(expr, problem, &symbol_table, &read_constant_atom)?;
         let value = read_constant_atom(value, &symbol_table)?;
 
         init_ch.effects.push(Effect {
@@ -168,7 +168,7 @@ pub fn problem_to_chronicles(problem: Problem) -> Result<aries_planning::chronic
     // goals translate as condition at the global end time
     for goal in &problem.goals {
         // a goal is simply a condition where only constant atom can appear
-        let (state_var, value) = read_condition(goal, &problem, &symbol_table, &read_constant_atom)?;
+        let (state_var, value) = read_condition(goal, problem, &symbol_table, &read_constant_atom)?;
 
         init_ch.conditions.push(Condition {
             start: init_ch.end,
@@ -192,7 +192,7 @@ pub fn problem_to_chronicles(problem: Problem) -> Result<aries_planning::chronic
     let mut templates = Vec::new();
     for a in &problem.actions {
         let cont = Container::Template(templates.len());
-        let template = read_chronicle_template(cont, &problem, ChronicleAs::Action(a), &mut context)?;
+        let template = read_chronicle_template(cont, problem, ChronicleAs::Action(a), &mut context)?;
         templates.push(template);
     }
 
@@ -208,7 +208,11 @@ pub fn problem_to_chronicles(problem: Problem) -> Result<aries_planning::chronic
 }
 
 // Convert Option<Arc<Domains>>> to Answer Object
-pub fn translate_answer(problem: &FiniteProblem, x: &Option<Arc<Domains>>) -> Result<Answer, Error> {
+pub fn translate_answer(
+    problem: &aries_grpc_api::Problem,
+    problem_def: &FiniteProblem,
+    x: &Option<Arc<Domains>>,
+) -> Result<Answer, Error> {
     let mut answer = Answer::default();
     let mut plan = Vec::new();
 
@@ -219,9 +223,9 @@ pub fn translate_answer(problem: &FiniteProblem, x: &Option<Arc<Domains>>) -> Re
                 .iter()
                 .map(|x| ass.sym_domain_of(*x).into_singleton().unwrap())
                 .collect();
-            problem.model.shape.symbols.format(&syms)
+            problem_def.model.shape.symbols.format(&syms)
         };
-        for ch in &problem.chronicles {
+        for ch in &problem_def.chronicles {
             if ass.value(ch.chronicle.presence) != Some(true) {
                 continue;
             }
@@ -235,10 +239,22 @@ pub fn translate_answer(problem: &FiniteProblem, x: &Option<Arc<Domains>>) -> Re
         }
 
         plan.sort_by(|a, b| a.partial_cmp(b).unwrap());
-        let mut _seq_plan = SequentialPlan::default();
-        for (start, name) in plan {
-            // TODO: Implement the plan in the answer
-            unimplemented!()
+        let mut seq_plan = SequentialPlan::default();
+        for (_start, name) in plan {
+            let map_action = |action_name: &str| -> Result<Action, Error> {
+                let action_name = action_name.to_string();
+                let action = problem
+                    .actions
+                    .iter()
+                    .find(|a| a.name == action_name)
+                    .ok_or_else(|| anyhow!("Action `{}` not found", action_name))?;
+                Ok(action.clone())
+            };
+            let action = map_action(&name)?;
+            seq_plan.actions.push(ActionInstance {
+                action: Some(action),
+                parameters: vec![], // TODO: Add parameters for action instances
+            })
         }
     } else {
         answer.status = 0;

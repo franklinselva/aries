@@ -14,11 +14,11 @@ pub fn solve(problem: aries_grpc_api::Problem) -> Result<aries_grpc_api::Answer,
     let mut planner = Planner::new(opt.clone());
 
     // println!("{:?}", problem);
-    let _spec = problem_to_chronicles(problem)?;
+    let _spec = problem_to_chronicles(&problem)?;
     planner.solve(_spec, &opt)?;
     let answer = planner.get_answer();
     planner.format_plan(&answer)?;
-    let answer = translate_answer(&planner.problem.unwrap(), &answer).unwrap();
+    let answer = translate_answer(&problem, &planner.problem.unwrap(), &answer).unwrap();
 
     Ok(answer)
 }
